@@ -143,7 +143,7 @@ func EncodeWithECI(data []byte, minECCPercent int, userSpecifiedLayers int, eci 
 // EncodeWithECIAndColor returns an aztec barcode like EncodeWithECI,
 // in the given color scheme.
 func EncodeWithECIAndColor(data []byte, minECCPercent int, userSpecifiedLayers int, eci barcode.ECI, color barcode.ColorScheme) (barcode.Barcode, error) {
-	if eci != barcode.NoECI && !eci.Valid() {
+	if !eci.Valid() {
 		return nil, fmt.Errorf("invalid ECI %d", eci)
 	}
 	bits := highlevelEncode(data, eci)

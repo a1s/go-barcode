@@ -42,17 +42,16 @@ func EncodeWithECIAndColor(data string, securityLevel byte, eci barcode.ECI, col
 		return nil, fmt.Errorf("invalid security level %d", securityLevel)
 	}
 
+	if !eci.Valid() {
+		return nil, fmt.Errorf("invalid ECI %d", eci)
+	}
+
 	sl := securitylevel(securityLevel)
 
-	eciWords, err := eciCodewords(eci)
+	dataWords, err := dataCodewords(data, eci)
 	if err != nil {
 		return nil, err
 	}
-	dataWords, err := highlevelEncode(data)
-	if err != nil {
-		return nil, err
-	}
-	dataWords = append(eciWords, dataWords...)
 
 	columns, rows := calcDimensions(len(dataWords), sl.ErrorCorrectionWordCount())
 	if columns < minCols || columns > maxCols || rows < minRows || rows > maxRows {
@@ -105,6 +104,25 @@ func Encode(data string, securityLevel byte) (barcode.Barcode, error) {
 	return EncodeWithColor(data, securityLevel, barcode.ColorScheme16)
 }
 
+// dataCodewords returns the data codewords of a symbol.
+//
+// They are the ECI's codewords, if any, followed by
+// the high-level encoding of the data.
+func dataCodewords(data string, eci barcode.ECI) ([]int, error) {
+	eciWords, err := eciCodewords(eci)
+	if err != nil {
+		return nil, err
+	}
+	words, err := highlevelEncode(data)
+	if err != nil {
+		return nil, err
+	}
+	if len(eciWords) == 0 {
+		return words, nil
+	}
+	return append(eciWords, words...), nil
+}
+
 // eciCodewords returns the codewords that open the data of a symbol
 // carrying an ECI: the ECI codeword for the designator's range and the
 // designator in one or two codewords.  It returns none for barcode.NoECI.
@@ -113,8 +131,6 @@ func eciCodewords(eci barcode.ECI) ([]int, error) {
 	switch {
 	case eci == barcode.NoECI:
 		return nil, nil
-	case !eci.Valid():
-		return nil, fmt.Errorf("invalid ECI %d", eci)
 	case value < 900:
 		return []int{eci_charset, value}, nil
 	case value < 810900:

@@ -2,7 +2,7 @@ package qr
 
 import (
 	"bytes"
-	"image"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -20,21 +20,6 @@ func bitString(bits *utils.BitList) string {
 		}
 	}
 	return buf.String()
-}
-
-func sameImage(first, second image.Image) bool {
-	if first.Bounds() != second.Bounds() {
-		return false
-	}
-	bounds := first.Bounds()
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			if first.At(x, y) != second.At(x, y) {
-				return false
-			}
-		}
-	}
-	return true
 }
 
 func Test_ECIHeader(t *testing.T) {
@@ -82,6 +67,37 @@ func Test_ECIEncoding(t *testing.T) {
 		t.Errorf("Auto with an ECI starts %s, want the ECI, then numeric mode",
 			got[:16])
 	}
+
+	// In UTF-16BE the bytes "33" are one character, U+3333, not two digits.
+	bits, _, err = Auto.getEncoder()("33", M, barcode.ECIUTF16BE)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := bitString(bits); !strings.HasPrefix(got, "0111000110010100") {
+		t.Errorf("Auto under UTF-16BE starts %s, want the ECI, then byte mode",
+			got[:16])
+	}
+}
+
+func Test_ASCIICompatible(t *testing.T) {
+	tests := map[barcode.ECI]bool{
+		barcode.NoECI:        true,
+		0:                    true,
+		barcode.ECIISO8859_1: true,
+		14:                   false,
+		barcode.ECIShiftJIS:  true,
+		barcode.ECIUTF16BE:   false,
+		barcode.ECIUTF8:      true,
+		barcode.ECIGB18030:   true,
+		barcode.ECIUTF16LE:   false,
+		barcode.ECIUTF32LE:   false,
+		899:                  false,
+	}
+	for eci, want := range tests {
+		if got := asciiCompatible(eci); got != want {
+			t.Errorf("asciiCompatible(%d) = %v, want %v", eci, got, want)
+		}
+	}
 }
 
 func Test_ECIVersion(t *testing.T) {
@@ -107,14 +123,14 @@ func Test_EncodeWithECI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !sameImage(plain, none) {
+	if !reflect.DeepEqual(plain.(*qrcode).data, none.(*qrcode).data) {
 		t.Error("NoECI draws a different symbol from Encode")
 	}
 	withECI, err := EncodeWithECI(content, M, Auto, barcode.ECIUTF8)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sameImage(plain, withECI) {
+	if reflect.DeepEqual(plain.(*qrcode).data, withECI.(*qrcode).data) {
 		t.Error("an ECI draws the same symbol as no ECI")
 	}
 	if withECI.Content() != content {
@@ -125,5 +141,9 @@ func Test_EncodeWithECI(t *testing.T) {
 		if _, err := EncodeWithECI(content, M, Auto, eci); err == nil {
 			t.Errorf("ECI %d should be refused", eci)
 		}
+	}
+	_, err = EncodeWithECI(content, M, unknownEncoding, barcode.NoECI)
+	if err == nil {
+		t.Error("an unknown encoding should be refused")
 	}
 }

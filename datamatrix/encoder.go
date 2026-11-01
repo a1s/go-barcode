@@ -28,9 +28,11 @@ func EncodeWithColor(content string, color barcode.ColorScheme) (barcode.Barcode
 // the content's bytes are in.  The content is encoded as the bytes it
 // holds, without conversion.  barcode.NoECI writes no ECI.
 //
-// A symbol carrying an ECI is never a GS1 symbol, so a leading FNC1 byte
-// in the content is encoded as the character it stands for in the ECI's
-// character set, as every other byte is.
+// A GS1 symbol cannot carry an ECI, so the content is never read as GS1:
+// a leading FNC1 byte is encoded as data, like every other byte.
+// Use Encode for GS1 content.  This way UTF-8 text can start with a
+// character from U+8000 to U+8FFF, such as many common CJK ideographs,
+// whose first byte is the same as FNC1.
 func EncodeWithECI(content string, eci barcode.ECI) (barcode.Barcode, error) {
 	return EncodeWithECIAndColor(content, eci, barcode.ColorScheme16)
 }
@@ -38,7 +40,7 @@ func EncodeWithECI(content string, eci barcode.ECI) (barcode.Barcode, error) {
 // EncodeWithECIAndColor returns a Datamatrix barcode like EncodeWithECI,
 // in the given color scheme.
 func EncodeWithECIAndColor(content string, eci barcode.ECI, color barcode.ColorScheme) (barcode.Barcode, error) {
-	if eci != barcode.NoECI && !eci.Valid() {
+	if !eci.Valid() {
 		return nil, fmt.Errorf("invalid ECI %d", eci)
 	}
 	data := encodeText(content, eci)

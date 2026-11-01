@@ -1,27 +1,11 @@
 package pdf417
 
 import (
-	"image"
 	"reflect"
 	"testing"
 
 	"github.com/boombuler/barcode"
 )
-
-func sameImage(first, second image.Image) bool {
-	if first.Bounds() != second.Bounds() {
-		return false
-	}
-	bounds := first.Bounds()
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			if first.At(x, y) != second.At(x, y) {
-				return false
-			}
-		}
-	}
-	return true
-}
 
 func Test_ECICodewords(t *testing.T) {
 	tests := []struct {
@@ -46,10 +30,30 @@ func Test_ECICodewords(t *testing.T) {
 		}
 	}
 
-	for _, eci := range []barcode.ECI{-2, 811800, barcode.MaxECI} {
+	for _, eci := range []barcode.ECI{811800, barcode.MaxECI} {
 		if _, err := eciCodewords(eci); err == nil {
 			t.Errorf("ECI %d should be refused", eci)
 		}
+	}
+}
+
+func Test_DataCodewords(t *testing.T) {
+	data := "Caf\u00e9"
+	words, err := highlevelEncode(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := dataCodewords(data, barcode.NoECI)
+	if err != nil || !reflect.DeepEqual(got, words) {
+		t.Errorf("without an ECI: %v, %v, want %v", got, err, words)
+	}
+
+	// The ECI comes first, then the data.
+	want := append([]int{927, 26}, words...)
+	got, err = dataCodewords(data, barcode.ECIUTF8)
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Errorf("with an ECI: %v, %v, want %v", got, err, want)
 	}
 }
 
@@ -63,17 +67,20 @@ func Test_EncodeWithECI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !sameImage(plain, none) {
+	if !reflect.DeepEqual(plain.(*pdfBarcode).code, none.(*pdfBarcode).code) {
 		t.Error("NoECI draws a different symbol from Encode")
 	}
 	withECI, err := EncodeWithECI(data, 2, barcode.ECIUTF8)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sameImage(plain, withECI) {
+	if reflect.DeepEqual(plain.(*pdfBarcode).code, withECI.(*pdfBarcode).code) {
 		t.Error("an ECI draws the same symbol as no ECI")
 	}
-	if _, err := EncodeWithECI(data, 2, barcode.MaxECI); err == nil {
-		t.Errorf("ECI %d should be refused", barcode.MaxECI)
+
+	for _, eci := range []barcode.ECI{-2, barcode.MaxECI} {
+		if _, err := EncodeWithECI(data, 2, eci); err == nil {
+			t.Errorf("ECI %d should be refused", eci)
+		}
 	}
 }

@@ -4,7 +4,8 @@ import "testing"
 
 func Test_ECIValid(t *testing.T) {
 	tests := map[ECI]bool{
-		NoECI:      false,
+		NoECI - 1:  false,
+		NoECI:      true,
 		0:          true,
 		ECIUTF8:    true,
 		MaxECI:     true,

@@ -54,7 +54,10 @@ const (
 	ECIUTF32LE     ECI = 35
 )
 
-// Valid reports whether eci is a designator, from 0 to MaxECI.
+// Valid reports whether eci can be passed to an EncodeWithECI function.
+//
+// That is NoECI or a designator from 0 to MaxECI.  PDF417 can carry
+// designators up to 811799 only, so it refuses larger ones as well.
 func (eci ECI) Valid() bool {
-	return eci >= 0 && eci <= MaxECI
+	return eci == NoECI || eci >= 0 && eci <= MaxECI
 }

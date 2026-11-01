@@ -1,27 +1,12 @@
 package aztec
 
 import (
-	"image"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/boombuler/barcode"
 )
-
-func sameImage(first, second image.Image) bool {
-	if first.Bounds() != second.Bounds() {
-		return false
-	}
-	bounds := first.Bounds()
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			if first.At(x, y) != second.At(x, y) {
-				return false
-			}
-		}
-	}
-	return true
-}
 
 func Test_HighLevelEncodeECI(t *testing.T) {
 	tests := []struct {
@@ -68,14 +53,16 @@ func Test_EncodeWithECI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !sameImage(plain, none) {
+	if !reflect.DeepEqual(plain.(*aztecCode).BitList,
+		none.(*aztecCode).BitList) {
 		t.Error("NoECI draws a different symbol from Encode")
 	}
 	withECI, err := encode(barcode.ECIUTF8)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sameImage(plain, withECI) {
+	if reflect.DeepEqual(plain.(*aztecCode).BitList,
+		withECI.(*aztecCode).BitList) {
 		t.Error("an ECI draws the same symbol as no ECI")
 	}
 
