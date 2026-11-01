@@ -30,7 +30,7 @@ func Test_ECICodewords(t *testing.T) {
 		}
 	}
 
-	for _, eci := range []barcode.ECI{811800, barcode.MaxECI} {
+	for _, eci := range []barcode.ECI{-2, 811800, barcode.MaxECI} {
 		if _, err := eciCodewords(eci); err == nil {
 			t.Errorf("ECI %d should be refused", eci)
 		}

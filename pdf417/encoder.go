@@ -125,21 +125,22 @@ func dataCodewords(data string, eci barcode.ECI) ([]int, error) {
 
 // eciCodewords returns the codewords that open the data of a symbol
 // carrying an ECI: the ECI codeword for the designator's range and the
-// designator in one or two codewords.  It returns none for barcode.NoECI.
+// designator in one or two codewords.  It returns none for barcode.NoECI
+// and an error for any other value outside 0 to 811799.
 func eciCodewords(eci barcode.ECI) ([]int, error) {
 	value := int(eci)
 	switch {
 	case eci == barcode.NoECI:
 		return nil, nil
+	case value < 0 || value > 811799:
+		return nil, fmt.Errorf(
+			"ECI %d is outside 0 to 811799, the range PDF417 can carry", eci)
 	case value < 900:
 		return []int{eci_charset, value}, nil
 	case value < 810900:
 		return []int{eci_general_purpose, value/900 - 1, value % 900}, nil
-	case value < 811800:
-		return []int{eci_user_defined, value - 810900}, nil
 	}
-	return nil, fmt.Errorf(
-		"ECI %d is above 811799, the largest PDF417 can carry", eci)
+	return []int{eci_user_defined, value - 810900}, nil
 }
 
 func encodeData(dataWords []int, columns int, sl securitylevel) ([]int, error) {
